@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài tập Tương tác: An toàn Thông tin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        .item-card {
+            transition: all 0.3s ease;
+        }
+        .selected {
+            border-color: #3b82f6 !important; /* blue-500 */
+            background-color: #eff6ff !important; /* blue-50 */
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+            transform: scale(1.02);
+        }
+        .correct {
+            border-color: #22c55e !important; /* green-500 */
+            background-color: #f0fdf4 !important; /* green-50 */
+            color: #166534 !important; /* green-800 */
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
+            cursor: default;
+        }
+        .incorrect {
+            border-color: #ef4444 !important; /* red-500 */
+            background-color: #fef2f2 !important; /* red-50 */
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        .disabled {
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 sm:p-8 font-sans">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 sm:p-10 relative">
+        <h2 class="text-2xl sm:text-3xl font-bold text-center text-slate-800 mb-2">Ghép tình huống với cách xử lí phù hợp</h2>
+        <p class="text-center text-slate-500 italic mb-8 text-sm sm:text-base">Nhấn chọn 1 mục ở cột Tình huống, sau đó chọn mục tương ứng ở cột Cách xử lí để ghép cặp.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
+            <!-- Cột Tình huống -->
+            <div class="flex flex-col gap-4">
+                <div class="text-lg font-semibold text-center text-indigo-600 bg-indigo-50 py-2 rounded-lg shadow-sm border border-indigo-100">A. Tình huống</div>
+                <div id="col-situations" class="flex flex-col gap-3"></div>
+            </div>
+            
+            <!-- Cột Cách xử lí -->
+            <div class="flex flex-col gap-4">
+                <div class="text-lg font-semibold text-center text-emerald-600 bg-emerald-50 py-2 rounded-lg shadow-sm border border-emerald-100">B. Cách xử lí</div>
+                <div id="col-solutions" class="flex flex-col gap-3"></div>
+            </div>
+        </div>
+        
+        <!-- Khu vực hiển thị thông báo kết quả -->
+        <div id="result-message" class="text-center mt-8 font-bold text-xl text-green-600 min-h-[32px] transition-opacity duration-500 opacity-0"></div>
+        
+        <!-- Nút Làm lại -->
+        <div class="mt-6 flex justify-center">
+            <button id="reset-btn" onclick="resetGame()" class="hidden px-6 py-2.5 bg-indigo-600 text-white rounded-xl shadow-md hover:bg-indigo-700 hover:shadow-lg transition-all duration-300 font-semibold flex items-center gap-2 transform hover:-translate-y-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                </svg>
+                Làm lại bài tập
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Dữ liệu câu hỏi
+        const situations = [
+            { id: 1, text: "1. Nhận được tệp lạ từ người không quen." },
+            { id: 2, text: "2. Máy tính xuất hiện cảnh báo có virus." },
+            { id: 3, text: "3. Bạn rủ dùng mật khẩu là ngày sinh." },
+            { id: 4, text: "4. Muốn sao lưu bài tập quan trọng." }
+        ];
+
+        const solutions = [
+            { matchId: 3, text: "Từ chối và chọn mật khẩu khó đoán hơn." },
+            { matchId: 2, text: "Cập nhật và sử dụng phần mềm diệt virus." },
+            { matchId: 4, text: "Lưu vào USB, ổ cứng ngoài hoặc Google Drive." }, 
+            { matchId: 1, text: "Không mở; xóa hoặc báo cho người lớn/giáo viên." }
+        ];
+
+        let selectedSituation = null;
+        let selectedSolution = null;
+        let correctPairs = 0;
+        let audioInitialized = false;
+
+        // Bộ tổng hợp âm thanh (Synthesizers)
+        let synthCorrect;
+        let synthWrong;
+        let synthWin;
+
+        // Khởi tạo âm thanh khi người dùng tương tác lần đầu
+        async function initAudio() {
+            if (!audioInitialized) {
+                await Tone.start();
+                
+                // Âm thanh khi đúng (Tiếng Ping cao)
+                synthCorrect = new Tone.Synth({
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 }
+                }).toDestination();
+                synthCorrect.volume.value = -10;
+
+                // Âm thanh khi sai (Tiếng Buzz trầm)
+                synthWrong = new Tone.MembraneSynth().toDestination();
+                synthWrong.volume.value = -5;
+
+                // Âm thanh khi chiến thắng
+                synthWin = new Tone.PolySynth(Tone.Synth).toDestination();
+                synthWin.volume.value = -10;
+                
+                audioInitialized = true;
+            }
+        }
+
+        function playWrongSound() {
+            if (audioInitialized && synthWrong) {
+                synthWrong.triggerAttackRelease("C2", "8n");
+            }
+        }
+
+        function playCorrectSound() {
+            if (audioInitialized && synthCorrect) {
+                synthCorrect.triggerAttackRelease("E5", "8n");
+            }
+        }
+
+        function playWinSound() {
+            if (audioInitialized && synthWin) {
+                const now = Tone.now();
+                synthWin.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
+                synthWin.triggerAttackRelease(["C4", "E4", "G4", "C5"], "4n", now + 0.15);
+            }
+        }
+
+        // Hàm render danh sách ra màn hình
+        function renderList(containerId, data, isSituation) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; // Xóa nội dung cũ
+            
+            const labels = ['A', 'B', 'C', 'D']; // Danh sách nhãn cố định cho cột Cách xử lí
+            
+            data.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'item-card p-4 border-2 border-slate-200 rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium leading-relaxed shadow-sm text-sm sm:text-base';
+                
+                // Gắn nhãn A, B, C, D động dựa trên vị trí sau khi đã đảo lộn
+                if (isSituation) {
+                    div.textContent = item.text;
+                } else {
+                    div.textContent = `${labels[index]}. ${item.text}`;
+                }
+                
+                div.dataset.id = isSituation ? item.id : item.matchId;
+                div.onclick = async () => {
+                    await initAudio(); // Đảm bảo âm thanh được kích hoạt
+                    handleSelect(div, isSituation);
+                };
+                container.appendChild(div);
+            });
+        }
+
+        function handleSelect(element, isSituation) {
+            if (element.classList.contains('correct') || element.classList.contains('disabled')) return;
+
+            if (isSituation) {
+                if (selectedSituation) selectedSituation.classList.remove('selected', 'incorrect');
+                selectedSituation = element;
+            } else {
+                if (selectedSolution) selectedSolution.classList.remove('selected', 'incorrect');
+                selectedSolution = element;
+            }
+
+            element.classList.add('selected');
+            element.classList.remove('incorrect');
+
+            if (selectedSituation && selectedSolution) {
+                checkMatch();
+            }
+        }
+
+        function checkMatch() {
+            if (selectedSituation.dataset.id === selectedSolution.dataset.id) {
+                // Trả lời đúng
+                selectedSituation.classList.replace('selected', 'correct');
+                selectedSolution.classList.replace('selected', 'correct');
+                selectedSituation.classList.add('disabled');
+                selectedSolution.classList.add('disabled');
+                correctPairs++;
+                
+                if (correctPairs === situations.length) {
+                    playWinSound();
+                    const msg = document.getElementById('result-message');
+                    msg.textContent = "🎉 Tuyệt vời! Em đã hoàn thành xuất sắc bài tập.";
+                    msg.classList.remove('opacity-0');
+                    msg.classList.add('opacity-100');
+                    
+                    // Hiện nút làm lại
+                    document.getElementById('reset-btn').classList.remove('hidden');
+                } else {
+                    playCorrectSound();
+                }
+            } else {
+                // Trả lời sai
+                playWrongSound();
+                selectedSituation.classList.replace('selected', 'incorrect');
+                selectedSolution.classList.replace('selected', 'incorrect');
+                
+                const tempSit = selectedSituation;
+                const tempSol = selectedSolution;
+                
+                // Bỏ hiệu ứng rung lắc sau 0.6s
+                setTimeout(() => {
+                    tempSit.classList.remove('incorrect', 'selected');
+                    tempSol.classList.remove('incorrect', 'selected');
+                }, 600);
+            }
+            selectedSituation = null;
+            selectedSolution = null;
+        }
+
+        // Hàm làm lại bài tập
+        function resetGame() {
+            selectedSituation = null;
+            selectedSolution = null;
+            correctPairs = 0;
+            
+            // Ẩn thông báo và nút làm lại
+            const msg = document.getElementById('result-message');
+            msg.classList.remove('opacity-100');
+            msg.classList.add('opacity-0');
+            document.getElementById('reset-btn').classList.add('hidden');
+            
+            // Khởi tạo lại giao diện
+            renderList('col-situations', situations, true);
+            renderList('col-solutions', shuffle([...solutions]), false);
+        }
+
+        // Hàm đảo ngẫu nhiên thứ tự cột đáp án
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // Khởi chạy lần đầu
+        renderList('col-situations', situations, true);
+        renderList('col-solutions', shuffle([...solutions]), false);
+    </script>
+</body>
+</html>

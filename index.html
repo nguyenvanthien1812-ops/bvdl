@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bài tập Tương tác: An toàn Thông tin</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        }
+
+        /* Hiệu ứng rung khi chọn sai */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-5px); }
+            80% { transform: translateX(5px); }
+        }
+        .shake-anim {
+            animation: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        }
+
+        /* Hiệu ứng nảy khi chọn đúng */
+        @keyframes popSuccess {
+            0% { transform: scale(0.95); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+        .pop-anim {
+            animation: popSuccess 0.4s ease-out;
+        }
+
+        /* Hiệu ứng viền sáng thở khi được chọn */
+        @keyframes pulseBorder {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4), 0 10px 15px -3px rgba(59, 130, 246, 0.15); }
+            50% { box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.6), 0 14px 20px -3px rgba(59, 130, 246, 0.25); }
+        }
+        .selected-item {
+            animation: pulseBorder 1.5s infinite;
+        }
+
+        /* Màu phân biệt cho từng cặp ghép đúng */
+        .pair-color-1 {
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%) !important;
+            border-color: #10b981 !important;
+            color: #065f46 !important;
+        }
+        .pair-color-2 {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
+            border-color: #3b82f6 !important;
+            color: #1e40af !important;
+        }
+        .pair-color-3 {
+            background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%) !important;
+            border-color: #a855f7 !important;
+            color: #6b21a8 !important;
+        }
+        .pair-color-4 {
+            background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important;
+            border-color: #f97316 !important;
+            color: #9a3412 !important;
+        }
+
+        /* Pháo hoa canvas toàn màn hình */
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 via-indigo-50/40 to-sky-100 min-h-screen text-slate-800 antialiased p-3 sm:p-6 lg:p-8 flex flex-col justify-between">
+    <canvas id="confetti-canvas"></canvas>
+
+    <div class="max-w-5xl mx-auto w-full">
+        <!-- HEADER TRÒ CHƠI -->
+        <header class="bg-white/80 backdrop-blur-md rounded-2xl shadow-sm border border-white/60 p-5 mb-6 transition-all">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-lg shadow-indigo-200">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold tracking-wide uppercase bg-indigo-100 text-indigo-700 mb-0.5">
+                            Tin học &amp; Kỹ năng số
+                        </span>
+                        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-800 tracking-tight">
+                            Ghép Cặp: An Toàn Thông Tin
+                        </h1>
+                    </div>
+                </div>
+
+                <!-- THANH ĐIỀU KHIỂN & ĐIỂM SỐ -->
+                <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                    <!-- Thời gian -->
+                    <div class="bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-inner">
+                        <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span id="timer-display" class="font-mono font-bold text-slate-700 text-sm">00:00</span>
+                    </div>
+
+                    <!-- Điểm số -->
+                    <div class="bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-inner">
+                        <span class="text-amber-500 font-bold">⭐</span>
+                        <span class="text-xs text-amber-700 font-semibold">Điểm:</span>
+                        <span id="score-display" class="font-extrabold text-amber-700 text-sm">100</span>
+                    </div>
+
+                    <!-- Nút Âm thanh -->
+                    <button id="toggle-sound-btn" onclick="toggleSound()" class="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-sm" title="Bật/Tắt âm thanh">
+                        <svg id="sound-on-icon" class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                        </svg>
+                        <svg id="sound-off-icon" class="w-5 h-5 text-slate-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                        </svg>
+                    </button>
+
+                    <!-- Nút Hướng dẫn -->
+                    <button onclick="openHelpModal()" class="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-sm" title="Hướng dẫn làm bài">
+                        <svg class="w-5 h-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- THANH TIẾN ĐỘ -->
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tiến độ ghép:</span>
+                    <span id="progress-text" class="text-sm font-bold text-indigo-600">0/4 cặp</span>
+                </div>
+                <div class="flex-1 max-w-xs bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                    <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- KHU VỰC BÀI TẬP CHÍNH -->
+        <main class="bg-white/90 backdrop-blur-md rounded-3xl shadow-xl shadow-indigo-100/40 border border-white p-5 sm:p-8 lg:p-10 relative overflow-hidden">
+            <!-- Dòng hướng dẫn -->
+            <div class="text-center mb-8">
+                <p class="text-slate-600 text-sm sm:text-base font-medium">
+                    👉 Hãy chọn <strong class="text-indigo-600">1 Tình huống</strong> bên cột trái, sau đó chọn <strong class="text-emerald-600">1 Cách xử lí</strong> tương ứng bên cột phải để hoàn thành cặp ghép!
+                </p>
+            </div>
+
+            <!-- 2 CỘT TƯƠNG TÁC -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10">
+                <!-- CỘT A: TÌNH HUỐNG -->
+                <div class="flex flex-col gap-3.5">
+                    <div class="flex items-center justify-between bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">A</span>
+                            <h2 class="font-bold text-indigo-900 text-base sm:text-lg">Tình huống thực tế</h2>
+                        </div>
+                        <span class="text-xs font-medium text-indigo-600 bg-white/70 px-2 py-0.5 rounded-md">4 tình huống</span>
+                    </div>
+
+                    <div id="col-situations" class="flex flex-col gap-3">
+                        <!-- Danh sách tình huống render bằng JS -->
+                    </div>
+                </div>
+
+                <!-- CỘT B: CÁCH XỬ LÍ -->
+                <div class="flex flex-col gap-3.5">
+                    <div class="flex items-center justify-between bg-emerald-50 border border-emerald-100 px-4 py-2.5 rounded-xl shadow-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">B</span>
+                            <h2 class="font-bold text-emerald-900 text-base sm:text-lg">Cách xử lí phù hợp</h2>
+                        </div>
+                        <span class="text-xs font-medium text-emerald-600 bg-white/70 px-2 py-0.5 rounded-md">Được xáo ngẫu nhiên</span>
+                    </div>
+
+                    <div id="col-solutions" class="flex flex-col gap-3">
+                        <!-- Danh sách cách xử lí render bằng JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- THÔNG BÁO HOÀN THÀNH & TỔNG KẾT BÀI TẬP -->
+            <div id="finish-card" class="hidden mt-8 p-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 text-white text-center shadow-lg transition-all duration-500">
+                <div class="inline-flex p-3 rounded-full bg-white/20 mb-3 backdrop-blur-sm">
+                    <svg class="w-10 h-10 text-white animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-black mb-1">Xuất Sắc! Em Đã Hoàn Thành Bài Tập!</h3>
+                <p id="finish-stats" class="text-white/90 text-sm sm:text-base mb-6 font-medium">Thời gian: 00:25 • Điểm: 100/100 • Không mắc lỗi nào</p>
+
+                <div class="flex flex-wrap items-center justify-center gap-3">
+                    <button onclick="resetGame()" class="px-6 py-2.5 bg-white text-emerald-700 hover:bg-slate-100 font-bold rounded-xl shadow-md transition transform hover:-translate-y-0.5 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Làm lại bài mới
+                    </button>
+                    <button onclick="toggleExplanations()" class="px-6 py-2.5 bg-emerald-700/80 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-md transition flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                        </svg>
+                        Xem giải thích chi tiết
+                    </button>
+                </div>
+            </div>
+
+            <!-- PHẦN GIẢI THÍCH CHI TIẾT (Ẩn mặc định, mở ra khi học sinh muốn ôn tập) -->
+            <div id="explanations-section" class="hidden mt-8 border-t border-slate-200 pt-6">
+                <h4 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <span class="text-indigo-600">💡</span> Bảng Ghi Nhớ &amp; Giải Thích An Toàn Thông Tin:
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="explanations-list">
+                    <!-- Sẽ render bằng JS -->
+                </div>
+            </div>
+        </main>
+
+        <!-- FOOTER -->
+        <footer class="mt-8 text-center text-slate-500 text-xs sm:text-sm">
+            <p>© Bài giảng số tương tác • Thiết kế cho lớp học Tin học an toàn &amp; văn minh</p>
+        </footer>
+    </div>
+
+    <!-- MODAL HƯỚNG DẪN -->
+    <div id="help-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300" id="help-modal-card">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800">Hướng Dẫn Làm Bài</h3>
+                </div>
+                <button onclick="closeHelpModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-3 text-slate-600 text-sm">
+                <div class="flex items-start gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5">1</span>
+                    <p>Nhấp vào một <strong class="text-indigo-600">Tình huống</strong> ở cột bên trái để chọn.</p>
+                </div>
+                <div class="flex items-start gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5">2</span>
+                    <p>Nhấp vào một <strong class="text-emerald-600">Cách xử lí</strong> ở cột bên phải tương ứng với tình huống đó.</p>
+                </div>
+                <div class="flex items-start gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5">3</span>
+                    <p>Nếu ghép đúng: Hai thẻ sẽ đổi màu đồng bộ và khóa lại. Nếu sai: Thẻ sẽ rung cảnh báo để em thử lại.</p>
+                </div>
+                <div class="flex items-start gap-2.5">
+                    <span class="w-5 h-5 rounded-full bg-purple-100 text-purple-700 flex-shrink-0 flex items-center justify-center text-xs font-bold mt-0.5">4</span>
+                    <p>Hoàn thành cả 4 cặp trong thời gian nhanh nhất với điểm số cao nhất nhé!</p>
+                </div>
+            </div>
+            <button onclick="closeHelpModal()" class="mt-6 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition">
+                Đã hiểu, bắt đầu làm bài!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- DỮ LIỆU BÀI TẬP ---
+        const questionData = [
+            {
+                id: 1,
+                situation: "Nhận được tệp lạ từ người không quen.",
+                solution: "Không mở; xóa hoặc báo cho người lớn/giáo viên.",
+                icon: "📩",
+                explanation: "Tệp đính kèm lạ có thể chứa mã độc, trojan hoặc virus tống tiền. Tuyệt đối không mở các tệp đáng ngờ."
+            },
+            {
+                id: 2,
+                situation: "Máy tính xuất hiện cảnh báo có virus.",
+                solution: "Cập nhật và sử dụng phần mềm diệt virus.",
+                icon: "🛡️",
+                explanation: "Phần mềm diệt virus chính hãng và cập nhật liên tục giúp ngăn chặn và cô lập mã độc tấn công hệ điều hành."
+            },
+            {
+                id: 3,
+                situation: "Bạn rủ dùng mật khẩu là ngày sinh.",
+                solution: "Từ chối và chọn mật khẩu khó đoán hơn.",
+                icon: "🔑",
+                explanation: "Ngày sinh là thông tin công khai dễ tra cứu. Cần đặt mật khẩu kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt."
+            },
+            {
+                id: 4,
+                situation: "Muốn sao lưu bài tập quan trọng.",
+                solution: "Lưu vào USB, ổ cứng ngoài hoặc Google Drive.",
+                icon: "💾",
+                explanation: "Sao lưu đa nơi (USB hoặc đám mây Cloud) giúp bảo vệ dữ liệu khi máy tính bị hỏng hóc hoặc mất mát ngoài ý muốn."
+            }
+        ];
+
+        // Biến trạng thái
+        let selectedSitEl = null;
+        let selectedSolEl = null;
+        let matchedCount = 0;
+        let score = 100;
+        let wrongAttempts = 0;
+        let timerSeconds = 0;
+        let timerInterval = null;
+        let isSoundEnabled = true;
+
+        // Bảng màu cho từng cặp khi ghép đúng
+        const pairStyles = [
+            { bgClass: 'pair-color-1', badgeColor: 'bg-emerald-600 text-white', label: 'Cặp 1' },
+            { bgClass: 'pair-color-2', badgeColor: 'bg-blue-600 text-white', label: 'Cặp 2' },
+            { bgClass: 'pair-color-3', badgeColor: 'bg-purple-600 text-white', label: 'Cặp 3' },
+            { bgClass: 'pair-color-4', badgeColor: 'bg-orange-600 text-white', label: 'Cặp 4' }
+        ];
+
+        // --- HỆ THỐNG ÂM THANH NATIVE (Web Audio API không cần thư viện ngoài) ---
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playSound(type) {
+            if (!isSoundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const now = ctx.currentTime;
+
+                if (type === 'select') {
+                    // Âm click nhẹ
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.08);
+                } else if (type === 'correct') {
+                    // Hợp âm Chime vui nhộn (C5, G5)
+                    [523.25, 783.99].forEach((freq, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+                        gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.35);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(now + idx * 0.08);
+                        osc.stop(now + idx * 0.08 + 0.35);
+                    });
+                } else if (type === 'wrong') {
+                    // Tiếng Buzz trầm báo sai
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(140, now);
+                    osc.frequency.linearRampToValueAtTime(100, now + 0.25);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.25);
+                } else if (type === 'win') {
+                    // Điệp khúc chúc mừng Fanfare
+                    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                    notes.forEach((freq, idx) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+                        gain.gain.setValueAtTime(0.2, now + idx * 0.12);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.4);
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start(now + idx * 0.12);
+                        osc.stop(now + idx * 0.12 + 0.4);
+                    });
+                }
+            } catch (e) {
+                console.warn("Audio Context notice:", e);
+            }
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            document.getElementById('sound-on-icon').classList.toggle('hidden', !isSoundEnabled);
+            document.getElementById('sound-off-icon').classList.toggle('hidden', isSoundEnabled);
+        }
+
+        // --- ĐỒNG HỒ ĐẾM THỜI GIAN ---
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerSeconds = 0;
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+            const s = (timerSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('timer-display').textContent = `${m}:${s}`;
+        }
+
+        // --- XÁO TRỘN MẢNG ---
+        function shuffle(arr) {
+            const result = [...arr];
+            for (let i = result.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [result[i], result[j]] = [result[j], result[i]];
+            }
+            return result;
+        }
+
+        // --- KHỞI TẠO GIAO DIỆN & RENDER ---
+        function initGame() {
+            matchedCount = 0;
+            score = 100;
+            wrongAttempts = 0;
+            selectedSitEl = null;
+            selectedSolEl = null;
+
+            document.getElementById('score-display').textContent = score;
+            document.getElementById('progress-text').textContent = '0/4 cặp';
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('finish-card').classList.add('hidden');
+            document.getElementById('explanations-section').classList.add('hidden');
+
+            startTimer();
+
+            // Render Cột Tình huống (Thứ tự 1, 2, 3, 4)
+            const sitCol = document.getElementById('col-situations');
+            sitCol.innerHTML = '';
+            questionData.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = "group relative p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-indigo-400 hover:shadow-md cursor-pointer transition-all duration-200 select-none flex items-start gap-3.5";
+                card.dataset.id = item.id;
+                card.dataset.type = "situation";
+
+                card.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 font-extrabold text-sm flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition">
+                        ${index + 1}
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <span class="text-base">${item.icon}</span>
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Tình huống ${index + 1}</span>
+                        </div>
+                        <p class="text-slate-700 font-medium text-sm sm:text-base leading-snug">${item.situation}</p>
+                    </div>
+                    <div class="status-badge hidden flex-shrink-0 self-center px-2 py-0.5 rounded-full text-xs font-bold"></div>
+                `;
+
+                card.onclick = () => handleSelect(card, true);
+                sitCol.appendChild(card);
+            });
+
+            // Render Cột Cách xử lý (Xáo trộn ngẫu nhiên)
+            const solCol = document.getElementById('col-solutions');
+            solCol.innerHTML = '';
+            const shuffledSolutions = shuffle(questionData);
+            const letterLabels = ['A', 'B', 'C', 'D'];
+
+            shuffledSolutions.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = "group relative p-4 rounded-2xl border-2 border-slate-200 bg-white hover:border-emerald-400 hover:shadow-md cursor-pointer transition-all duration-200 select-none flex items-start gap-3.5";
+                card.dataset.id = item.id;
+                card.dataset.type = "solution";
+
+                card.innerHTML = `
+                    <div class="flex-shrink-0 w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 font-extrabold text-sm flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition">
+                        ${letterLabels[index]}
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Cách xử lí ${letterLabels[index]}</span>
+                        </div>
+                        <p class="text-slate-700 font-medium text-sm sm:text-base leading-snug">${item.solution}</p>
+                    </div>
+                    <div class="status-badge hidden flex-shrink-0 self-center px-2 py-0.5 rounded-full text-xs font-bold"></div>
+                `;
+
+                card.onclick = () => handleSelect(card, false);
+                solCol.appendChild(card);
+            });
+
+            // Render sẵn danh sách giải thích
+            renderExplanations();
+        }
+
+        // --- XỬ LÝ CHỌN THẺ ---
+        function handleSelect(element, isSituation) {
+            // Nếu đã ghép đúng hoặc đang disabled thì bỏ qua
+            if (element.classList.contains('matched-locked')) return;
+
+            playSound('select');
+
+            if (isSituation) {
+                if (selectedSitEl) {
+                    unhighlight(selectedSitEl);
+                }
+                selectedSitEl = element;
+                highlightSelected(element, 'indigo');
+            } else {
+                if (selectedSolEl) {
+                    unhighlight(selectedSolEl);
+                }
+                selectedSolEl = element;
+                highlightSelected(element, 'emerald');
+            }
+
+            // Nếu cả 2 bên đã được chọn, kiểm tra kết quả
+            if (selectedSitEl && selectedSolEl) {
+                checkPair();
+            }
+        }
+
+        function highlightSelected(el, color) {
+            el.classList.add('selected-item', 'ring-2', `ring-${color}-500`, 'bg-indigo-50/50', 'scale-[1.02]');
+        }
+
+        function unhighlight(el) {
+            if (!el) return;
+            el.classList.remove('selected-item', 'ring-2', 'ring-indigo-500', 'ring-emerald-500', 'bg-indigo-50/50', 'scale-[1.02]');
+        }
+
+        // --- KIỂM TRA CẶP GHÉP ---
+        function checkPair() {
+            const isMatch = selectedSitEl.dataset.id === selectedSolEl.dataset.id;
+            const sit = selectedSitEl;
+            const sol = selectedSolEl;
+
+            // Reset con trỏ chọn
+            selectedSitEl = null;
+            selectedSolEl = null;
+
+            if (isMatch) {
+                // ĐÚNG!
+                playSound('correct');
+                matchedCount++;
+
+                const pairIndex = matchedCount - 1;
+                const style = pairStyles[pairIndex] || pairStyles[0];
+
+                [sit, sol].forEach(card => {
+                    unhighlight(card);
+                    card.classList.add('pop-anim', 'matched-locked', style.bgClass);
+                    card.classList.remove('cursor-pointer', 'hover:border-indigo-400', 'hover:border-emerald-400', 'hover:shadow-md');
+                    card.classList.add('cursor-default');
+
+                    // Hiện badge đã ghép
+                    const badge = card.querySelector('.status-badge');
+                    if (badge) {
+                        badge.textContent = `✓ ${style.label}`;
+                        badge.className = `status-badge flex-shrink-0 self-center px-2.5 py-0.5 rounded-full text-xs font-bold ${style.badgeColor} shadow-xs`;
+                        badge.classList.remove('hidden');
+                    }
+                });
+
+                // Cập nhật tiến độ
+                const percent = (matchedCount / questionData.length) * 100;
+                document.getElementById('progress-bar').style.width = `${percent}%`;
+                document.getElementById('progress-text').textContent = `${matchedCount}/${questionData.length} cặp`;
+
+                // Kiểm tra hoàn thành tất cả
+                if (matchedCount === questionData.length) {
+                    handleGameComplete();
+                }
+
+            } else {
+                // SAI!
+                playSound('wrong');
+                wrongAttempts++;
+                score = Math.max(0, score - 10);
+                document.getElementById('score-display').textContent = score;
+
+                [sit, sol].forEach(card => {
+                    unhighlight(card);
+                    card.classList.add('shake-anim', 'border-rose-400', 'bg-rose-50', 'text-rose-700');
+                });
+
+                setTimeout(() => {
+                    [sit, sol].forEach(card => {
+                        card.classList.remove('shake-anim', 'border-rose-400', 'bg-rose-50', 'text-rose-700');
+                    });
+                }, 500);
+            }
+        }
+
+        // --- KHI HOÀN THÀNH TẤT CẢ ---
+        function handleGameComplete() {
+            clearInterval(timerInterval);
+            playSound('win');
+            triggerConfetti();
+
+            const finishCard = document.getElementById('finish-card');
+            const stats = document.getElementById('finish-stats');
+            const m = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+            const s = (timerSeconds % 60).toString().padStart(2, '0');
+
+            stats.textContent = `⏱️ Thời gian: ${m}:${s} • ⭐ Điểm đạt: ${score}/100 • ❌ Lần thử lại: ${wrongAttempts}`;
+            finishCard.classList.remove('hidden');
+
+            // Cuộn nhẹ tới hộp kết quả
+            finishCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        // --- RENDER VÀ HIỂN THỊ GIẢI THÍCH ---
+        function renderExplanations() {
+            const list = document.getElementById('explanations-list');
+            list.innerHTML = '';
+            questionData.forEach((q, i) => {
+                const item = document.createElement('div');
+                item.className = "p-4 rounded-xl bg-slate-50 border border-slate-200 text-sm";
+                item.innerHTML = `
+                    <div class="font-bold text-slate-800 mb-1 flex items-center gap-1.5">
+                        <span>${q.icon}</span>
+                        <span>${i + 1}. ${q.situation}</span>
+                    </div>
+                    <div class="text-emerald-700 font-semibold mb-1 flex items-center gap-1">
+                        <span>➡️ Cách xử lí:</span>
+                        <span>${q.solution}</span>
+                    </div>
+                    <p class="text-slate-600 text-xs italic bg-white p-2 rounded-lg border border-slate-100">
+                        ${q.explanation}
+                    </p>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function toggleExplanations() {
+            const section = document.getElementById('explanations-section');
+            section.classList.toggle('hidden');
+            if (!section.classList.contains('hidden')) {
+                section.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // --- MODAL HƯỚNG DẪN ---
+        function openHelpModal() {
+            const modal = document.getElementById('help-modal');
+            const card = document.getElementById('help-modal-card');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                card.classList.remove('scale-95');
+                card.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeHelpModal() {
+            const modal = document.getElementById('help-modal');
+            const card = document.getElementById('help-modal-card');
+            modal.classList.add('opacity-0');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // --- HIỆU ỨNG PHÁO HOA CONFETTI TỰ ĐỘNG BẰNG CANVAS (KHÔNG CẦN CDN NGOÀI) ---
+        function triggerConfetti() {
+            const canvas = document.getElementById('confetti-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6'];
+
+            for (let i = 0; i < 150; i++) {
+                particles.push({
+                    x: canvas.width / 2,
+                    y: canvas.height / 2,
+                    vx: (Math.random() - 0.5) * 16,
+                    vy: (Math.random() - 0.5) * 16 - 3,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    rotation: Math.random() * 360,
+                    vRot: (Math.random() - 0.5) * 10
+                });
+            }
+
+            let animationFrame;
+            function update() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                let alive = false;
+
+                particles.forEach(p => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.35; // trọng lực
+                    p.vx *= 0.98;
+                    p.alpha -= 0.008;
+                    p.rotation += p.vRot;
+
+                    if (p.alpha > 0) {
+                        alive = true;
+                        ctx.save();
+                        ctx.globalAlpha = Math.max(0, p.alpha);
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate((p.rotation * Math.PI) / 180);
+                        ctx.fillStyle = p.color;
+                        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                        ctx.restore();
+                    }
+                });
+
+                if (alive) {
+                    animationFrame = requestAnimationFrame(update);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    cancelAnimationFrame(animationFrame);
+                }
+            }
+            update();
+        }
+
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('confetti-canvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Bắt đầu game khi tải trang
+        window.addEventListener('DOMContentLoaded', initGame);
+    </script>
+</body>
+</html>
